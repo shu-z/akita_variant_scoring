@@ -18,3 +18,9 @@ Packages needed:
 Test run on a vcf of structural variants:  
 > python score_var.py --in test/input/subset.somaticSV.vcf --shift_by -1 0 1 --file subset_SV --dir test/output
 
+
+
+-----------------------
+Shu's notes
+
+- 
