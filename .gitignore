@@ -148,6 +148,7 @@ data/hg38.fa
 data/hg38.fa.fai
 scoring_pipeline_scratch.ipynb
 scripts/scoring.py
+scripts/hicrep.py
 walkthroughs/.ipynb_checkpoints
 .ipynb_checkpoints/
 **/*.ipynb_checkpoints/
@@ -158,7 +159,6 @@ test_data/test_set_sequences/sequences/
 test_data/example_application/tumor_output/
 test_data/custom_perturbations/output/CTCF_del_maps.npy
 test_data/custom_perturbations/output/CTCF_del_tracks.npy
-testing_packages.py
-Akita_model/
+Akita_model/*
 score_var_output/
 >>>>>>> 82a7705dff92f1e47b6d19484bbaab1cce23f0ec
