@@ -141,6 +141,7 @@ dmypy.json
 /akdemir_collab/data/
 /akdemir_collab/figs/
 /scratch/results/
+/scratch_backup/
 
 =======
 __pycache__
