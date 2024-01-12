@@ -114,6 +114,11 @@ optional arguments:
                                              (default: 1000)              
 '''
 
+##########
+#start timing
+import time, psutil
+
+start=time.time()
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -415,6 +420,9 @@ if get_tracks:
 
 import os
 from pathlib import Path
+
+#idk exactly what this does but prevents the hd5 read error for loading model_file
+os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 chrom_lengths_path = f'data/chrom_lengths_{genome}'
 if not Path(chrom_lengths_path).is_file():
@@ -774,6 +782,12 @@ if get_Akita_scores:
                 do cat "$file" >> {out_file}_scores && rm "$file"; \
                 done')
 
+
+#see how much memory for one vcf 
+print('memory in MB: ' + str(psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2))
+
+end=time.time()
+print('seconds_elapsed: ', str(end-start))
 
 
 # Adjust log file to only have 1 row per variant

@@ -43,6 +43,10 @@ bins = 448
 nt = ['A', 'T', 'C', 'G']
 
 
+
+
+
+
 #katie's home dir has reference files 
 #home_dir = '/pollard/home/ketringjoni/'
 home_dir='/pollard/home/shzhang/akita/run_akita/refs/'
@@ -81,6 +85,13 @@ import tensorflow as tf
 
 if tf.__version__[0] == '1':
     tf.compat.v1.enable_eager_execution()
+    
+    
+    
+#so it doesn't take up all the cpus 
+os.environ["OMP_NUM_THREADS"] = "1"
+tf.config.threading.set_intra_op_parallelism_threads(2)
+tf.config.threading.set_inter_op_parallelism_threads(2)
     
 
 #idk exactly what this does but prevents the hd5 read error for loading model_file
