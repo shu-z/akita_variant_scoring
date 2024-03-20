@@ -317,6 +317,8 @@ parser.add_argument('--nrows',
 
 #SHU ADDING IN OPTIONS FOR GC MUTATE AND NUCLEOTIDE MUTATE
 
+parser.add_argument
+
 parser.add_argument ('--gc_mutate',
                      dest='gc_mutate',
                      help='''Will mutate GC content of variant based on percentage of mutation specified, and compare mutated variant sequence to the reference sequence (if running get_Akita_scores).''',

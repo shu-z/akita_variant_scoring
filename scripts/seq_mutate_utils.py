@@ -26,7 +26,31 @@ import io
 
 
 
+def mutate_sequence():
 
+    if gc_mutate:
+        #we want to alter ref_seq in sequences_i
+        #mutate_gc(seq, variant_start, variant_end, posflank, endflank, revcomp, mut_percent):
+        var_rel_pos=sequences_i[-1][0]
+        new_seq=seq_mutate_utils.mutate_gc(sequences_i[0], var_rel_pos, var_rel_pos+SVLEN, 
+                                                           0,0, revcomp, 50)
+                        
+        #for now, replace the alt seq with the gc mutated seq
+        sequences_i_list=list(sequences_i)
+        sequences_i_list[1]=new_seq
+        sequences_i=tuple(sequences_i_list)
+                        
+                        
+                    
+                    
+    if motif_mutate:
+        var_rel_pos=sequences_i[-1][0]
+        new_seq=seq_mutate_utils.shuffle_nucs(sequences_i[0], var_rel_pos, var_rel_pos+SVLEN, 
+                                                              posflank, endflank, revcomp)
+         
+                        
+        #for now, replace the alt seq with the gc mutated seq
+        sequences_i[1]=new_seq 
 
 
 

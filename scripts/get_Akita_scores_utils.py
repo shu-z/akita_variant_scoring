@@ -48,6 +48,13 @@ import tensorflow as tf
 if tf.__version__[0] == '1':
     tf.compat.v1.enable_eager_execution()
     
+
+        
+#so it doesn't take up all the cpus 
+os.environ["OMP_NUM_THREADS"] = "1"
+tf.config.threading.set_intra_op_parallelism_threads(3)
+tf.config.threading.set_inter_op_parallelism_threads(3)
+
     
 fasta_open = None
 chrom_lengths = None

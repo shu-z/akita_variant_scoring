@@ -314,6 +314,40 @@ parser.add_argument('--nrows',
                     required = False)
 
 
+
+#SHU ADDING IN OPTIONS FOR GC MUTATE AND NUCLEOTIDE MUTATE
+
+parser.add_argument
+
+parser.add_argument ('--gc_mutate',
+                     dest='gc_mutate',
+                     help='''Will mutate GC content of variant based on percentage of mutation specified, and compare mutated variant sequence to the reference sequence (if running get_Akita_scores).''',
+                     type=int,
+                     default=0,
+                     required=False)
+
+parser.add_argument ('--posflank',
+                     dest='posflank',
+                     help='''For gc_mutate. Specifies length of region, if region to be mutated is region upstream of variant POS. --gc_mutate must be greater than 0 if specifying posflank''',
+                     type=int,
+                     default=0,
+                     required=False)
+
+parser.add_argument ('--endflank',
+                     dest='endflank',
+                     help='''For gc_mutate. Specifies length of region, if region to be mutated is region downstream of variant END. --gc_mutate must be greater than 0 if specifying endflank''',
+                     type=int,
+                     default=0,
+                     required=False)
+
+parser.add_argument ('--shuffle_variant',
+                     dest='shuffle_variant',
+                     help='''Will shuffle nucleotide content of variant based on percentage of mutation specified, and compare mutated variant sequence to the reference sequence (if running get_Akita_scores).''',
+                     action='store_true',
+                     required=False)
+
+
+
 args = parser.parse_args()
 
 
@@ -334,6 +368,12 @@ get_tracks = args.get_tracks
 get_maps = args.get_maps
 get_Akita_scores = args.get_Akita_scores
 var_set_size = args.nrows
+
+#shu adding more arguments
+gc_mutate=args.gc_mutate
+shuffle_variant=args.shuffle_variant
+posflank=args.posflank
+endflank=args.endflank
 
 
 __version__ = '1.0'
@@ -568,6 +608,24 @@ while True:
             SVLEN = 0
 
         for shift in shift_by:
+            # Take reverse complement only with 0 shift
+            if shift != 0 & True in revcomp_decision:
+                revcomp_decision_i = [False]
+            else:
+                revcomp_decision_i = revcomp_decision
+
+            # #SHU EDIT so you can take reverse complement with other shifts
+            # #but this is strand dependent:
+            # #print('revcom_deicions', revcomp_decision)
+            # if strand=='+':
+            #     revcomp_decision_i = revcomp_decision
+            # elif strand=='-':
+            #     #flip T/F values in revcomp decision list
+            #     revcomp_decision_i = [not val for val in revcomp_decision]
+
+            # else:
+            #     revcomp_decision_i = revcomp_decision               
+            # #print('strand is: ', strand, '; rev comp decision is: ', revcomp_decision_i)
 
             # Take reverse complement only with 0 shift
             if shift != 0 & True in revcomp_decision:
@@ -604,6 +662,33 @@ while True:
 
                         # Create sequences_i from variant input
                         sequences_i = get_seq_utils.get_sequences_SV(CHR, POS, REF, ALT, END, SVTYPE, shift, revcomp)
+
+
+                    #SHU EDIT adding GC mutate and nucleotide mutate stuff 
+                    if gc_mutate>0:
+                        #we want to alter ref_seq in sequences_i
+                        #mutate_gc(seq, variant_start, variant_end, posflank, endflank, revcomp, mut_percent):
+                        var_rel_pos=sequences_i[-1][0]
+                        new_seq=seq_mutate_utils.mutate_gc(sequences_i[0], var_rel_pos, var_rel_pos+SVLEN, 
+                                                           posflank,endflank, revcomp, gc_mutate)
+                        
+                        #for now, replace the alt seq with the gc mutated seq
+                        sequences_i_list=list(sequences_i)
+                        sequences_i_list[1]=new_seq
+                        sequences_i=tuple(sequences_i_list)
+                        
+                    
+                    if shuffle_variant:
+                        var_rel_pos=sequences_i[-1][0]
+                        new_seq=seq_mutate_utils.shuffle_nucs(sequences_i[0], var_rel_pos, var_rel_pos+SVLEN, 
+                                                              posflank, endflank, revcomp)
+         
+                        
+                        #for now, replace the alt seq with the shuffled seq
+                        sequences_i_list=list(sequences_i)
+                        sequences_i_list[1]=new_seq
+                        sequences_i=tuple(sequences_i_list)
+                      
                         
 
                     if get_seq:
