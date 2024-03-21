@@ -317,39 +317,35 @@ parser.add_argument('--nrows',
 
 #SHU ADDING IN OPTIONS FOR GC MUTATE AND NUCLEOTIDE MUTATE
 
-parser.add_argument
-
 parser.add_argument ('--gc_mutate',
                      dest='gc_mutate',
-                     help='''Will mutate GC content of variant based on percentage of mutation specified, and compare mutated variant sequence to the reference sequence (if running get_Akita_scores).''',
-                     type=int,
+                     help='''Will mutate GC content of variant and up/downstream flanking regions based on percentage of mutation specified.''',
                      default=0,
                      required=False)
 
-parser.add_argument ('--posflank',
-                     dest='posflank',
-                     help='''For gc_mutate. Specifies length of region, if region to be mutated is region upstream of variant POS. --gc_mutate must be greater than 0 if specifying posflank''',
-                     type=int,
+parser.add_argument ('--shuffle_mutate',
+                     dest='shuffle_mutate',
+                     help='''Will shuffle nucleotides of variant and up/downstream flanking regions based on percentage of mutation specified.''',
                      default=0,
                      required=False)
 
-parser.add_argument ('--endflank',
-                     dest='endflank',
-                     help='''For gc_mutate. Specifies length of region, if region to be mutated is region downstream of variant END. --gc_mutate must be greater than 0 if specifying endflank''',
-                     type=int,
+parser.add_argument ('--tf_mutate',
+                     dest='tf_mutate',
+                     help='''Will mutate TF motifs near variant and up/downstream flanking regions based on percentage of mutation specified.''',
                      default=0,
                      required=False)
 
-parser.add_argument ('--shuffle_variant',
-                     dest='shuffle_variant',
-                     help='''Will shuffle nucleotide content of variant based on percentage of mutation specified, and compare mutated variant sequence to the reference sequence (if running get_Akita_scores).''',
-                     action='store_true',
-                     required=False)
 
+import ast
+
+#adding in parser to parse dictionaries 
+def parse_args_dict(argument_string):
+    # Convert the string representation of the dictionary into an actual dictionary
+    arguments = ast.literal_eval(argument_string)
+    return arguments
 
 
 args = parser.parse_args()
-
 
 in_file = args.in_file
 input_sequences = args.sequences
@@ -370,10 +366,25 @@ get_Akita_scores = args.get_Akita_scores
 var_set_size = args.nrows
 
 #shu adding more arguments
+#gc_mutate=parse_args_dict(args.gc_mutate)
+#shuffle_mutate=parse_args_dict(args.shuffle_mutate)
+#tf_mutate=parse_args_dict(args.tf_mutate)
+
+#ok, for now it's not working
+#ok this is janky and temporary 
 gc_mutate=args.gc_mutate
-shuffle_variant=args.shuffle_variant
-posflank=args.posflank
-endflank=args.endflank
+if gc_mutate:
+    gc_mutate=gc_mutate.split()
+    print(gc_mutate)
+
+shuffle_mutate=args.shuffle_mutate
+if shuffle_mutate:
+    shuffle_mutate=shuffle_mutate.split()
+
+tf_mutate=args.tf_mutate
+if tf_mutate:
+    tf_mutate=tf_mutate.split()
+
 
 
 __version__ = '1.0'
@@ -474,7 +485,8 @@ centromere_coords = pd.read_table(centromere_coords_path, sep = '\t')
 fasta_open = pysam.Fastafile(fasta_path)
 
 
-# Assign necessary values to variables across module
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Assign necessary values to variables across module and import
 
 # Module 1: reading utilities
 import sys
@@ -494,16 +506,27 @@ get_seq_utils.seq_length = seq_len
 get_seq_utils.half_patch_size = round(seq_len/2)
 
 
-# Module 2: get_Akita_scores utilities
+# Module 3: get_Akita_scores utilities
 if get_Akita_scores:
     import get_Akita_scores_utils
     get_Akita_scores_utils.chrom_lengths = chrom_lengths
     get_Akita_scores_utils.centromere_coords = centromere_coords
 
-   
-    
+
+# Module 4: seq_mutate_utils
+mutate=False
+if gc_mutate or shuffle_mutate or tf_mutate:
+    mutate=True
+
+if mutate:
+    import seq_mutate_utils
+
+
 import sys
 import numpy as np
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 nt = ['A', 'T', 'C', 'G']
     
@@ -664,33 +687,14 @@ while True:
                         sequences_i = get_seq_utils.get_sequences_SV(CHR, POS, REF, ALT, END, SVTYPE, shift, revcomp)
 
 
-                    #SHU EDIT adding GC mutate and nucleotide mutate stuff 
-                    if gc_mutate>0:
-                        #we want to alter ref_seq in sequences_i
-                        #mutate_gc(seq, variant_start, variant_end, posflank, endflank, revcomp, mut_percent):
-                        var_rel_pos=sequences_i[-1][0]
-                        new_seq=seq_mutate_utils.mutate_gc(sequences_i[0], var_rel_pos, var_rel_pos+SVLEN, 
-                                                           posflank,endflank, revcomp, gc_mutate)
-                        
-                        #for now, replace the alt seq with the gc mutated seq
-                        sequences_i_list=list(sequences_i)
-                        sequences_i_list[1]=new_seq
-                        sequences_i=tuple(sequences_i_list)
-                        
-                    
-                    if shuffle_variant:
-                        var_rel_pos=sequences_i[-1][0]
-                        new_seq=seq_mutate_utils.shuffle_nucs(sequences_i[0], var_rel_pos, var_rel_pos+SVLEN, 
-                                                              posflank, endflank, revcomp)
-         
-                        
-                        #for now, replace the alt seq with the shuffled seq
-                        sequences_i_list=list(sequences_i)
-                        sequences_i_list[1]=new_seq
-                        sequences_i=tuple(sequences_i_list)
-                      
-                        
+  
+                    if mutate:
+                        #call master mutate sequence 
+                        sequences_i=seq_mutate_utils.mutate_sequence(CHR, POS, END, SVTYPE, SVLEN, sequences_i, shift, revcomp, 
+                                                                    gc_mutate, shuffle_mutate, tf_mutate) 
 
+                        
+                    print('finished calling sequences')  
                     if get_seq:
 
                         # Get relative position of variant in sequence

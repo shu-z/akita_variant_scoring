@@ -20,15 +20,19 @@ import random
 
 import os
 import io
+import warnings
 
 
 # # # # # # # # # # # # # # # # # # 
 
 
+# this is a temporary fix 
+warnings.filterwarnings("ignore")
 
-def mutate_sequence(CHR, POS, SVTYPE, SVLEN, sequences_i, shift, revcomp, gc_mutate, shuffle_mutate, tf_mutate) 
+
+def mutate_sequence(CHR, POS, END, SVTYPE, SVLEN, sequences_i, shift, revcomp, gc_mutate, shuffle_mutate, tf_mutate):
     """
-    This function is calls other functions based on the type of sequence mutation 
+    Applies sequence mutation function based on type of mutation specified in gc/shuffle/tf_mutate
 
 
     Arguments:
@@ -46,55 +50,40 @@ def mutate_sequence(CHR, POS, SVTYPE, SVLEN, sequences_i, shift, revcomp, gc_mut
     
     if gc_mutate:
         #we want to alter ref_seq in sequences_i
-        #mutate_gc(seq, variant_start, variant_end, up_flank, down_flank, revcomp, mut_percent):
-        var_rel_pos=sequences_i[-1][0]
-        
-        new_seq=mutate_gc(sequences_i[0], var_rel_pos, var_rel_pos+SVLEN, 
-                                            gc_mutate['up_flank'], gc_mutate['down_flank'], revcomp, gc_mutate['mut_percent'])
-                        
-        #for now, replace the alt seq with the gc mutated seq
-        sequences_i_list=list(sequences_i)
-        sequences_i_list[1]=new_seq
-        sequences_i=tuple(sequences_i_list)
+        #mutate_gc(sequences_i, up_flank, down_flank, revcomp, mut_percent):      
+        #sequences_i_new=mutate_gc(sequences_i, gc_mutate['up_flank'], gc_mutate['down_flank'], revcomp, gc_mutate['mut_percent'])
+        print('gc mutate', gc_mutate)
+        sequences_i_new=mutate_gc(sequences_i, float(gc_mutate[0]), float(gc_mutate[1]), revcomp, int(gc_mutate[2]), SVLEN)
 
+        
         #returns REF and GC-altered REF atm 
-        return(sequences_i)
+        return(sequences_i_new)
                         
                         
 
     if shuffle_mutate:
         #we want to alter ref_seq in sequences_i
-        #shuffle_nucs(seq, variant_start, variant_end, up_flank, down_flank, revcomp):
-        var_rel_pos=sequences_i[-1][0]
-        
-        new_seq=shuffle_nucs(sequences_i[0], var_rel_pos, var_rel_pos+SVLEN, 
-                                            shuffle_mutate['up_flank'], shuffle_mutate['down_flank'], revcomp)
+        #shuffle_nucs(sequences_i, up_flank, down_flank, revcomp):      
+        #sequences_i_new=shuffle_nucs(sequences_i, shuffle_mutate['up_flank'], shuffle_mutate['down_flank'], revcomp)
+        sequences_i_new=shuffle_nucs(sequences_i, int(shuffle_mutate[0]), int(shuffle_mutate[1]), revcomp, SVLEN)
+
                         
-        #for now, replace the alt seq with the gc mutated seq
-        sequences_i_list=list(sequences_i)
-        sequences_i_list[1]=new_seq
-        sequences_i=tuple(sequences_i_list)
-
         #returns REF and shuffled REF atm 
-        return(sequences_i)
-
-
+        return(sequences_i_new)
 
     
     if tf_mutate:
         #this is the argument 
         #tf_mutate={'up_flank': 1000, 'down_flank':1000, 'tf_mutate_type': 'INV', 'alter_variant': False, 'track_path':''}
-
         
-        var_rel_pos=sequences_i[-1][0]
-        new_seq=seq_mutate_utils.shuffle_nucs(sequences_i[0], var_rel_pos, var_rel_pos+SVLEN, 
-                                                              up_flank, down_flank, revcomp)
-         
-                        
-        #for now, replace the alt seq with the gc mutated seq
-        sequences_i[1]=new_seq 
+        # sequences_i_new=mutate_TFs(CHR, POS, END, SVTYPE, SVLEN, sequences_i, revcomp, 
+        #                            tf_mutate['tf_mutate_type'], tf_mutate['up_flank'], tf_mutate['down_flank'], 
+        #                            tf_mutate['alter_variant'], tf_mutate['track_path'])
 
-
+        sequences_i_new=mutate_TFs(CHR, POS, END, SVTYPE, SVLEN, sequences_i, revcomp, 
+                                   tf_mutate[2], int(tf_mutate[0]), int(tf_mutate[1]), 
+                                   tf_mutate[3], tf_mutate[4])
+        return(sequences_i_new)
 
 
 
@@ -115,14 +104,13 @@ def gc_seq(seq, start, end):
 
 
 
-def mutate_gc(seq, variant_start, variant_end, up_flank, down_flank, revcomp, mut_percent):
+def mutate_gc(sequences_i, up_flank, down_flank, revcomp, mut_percent, SVLEN):
     """
     #note to self: this works on the REF seq, so the variant isn't altered at the moment 
     
     # note to self: this is different for BNDs -- can only change GC in flanking regions 
     # this does not current work for BNDs 
 
-    #note to self: need to change the seq, variant_start, variant_end parameters to be taken from sequences_i
 
     Arguments:
         up_flank: if 
@@ -135,49 +123,73 @@ def mutate_gc(seq, variant_start, variant_end, up_flank, down_flank, revcomp, mu
     """
 
     #note to self: need to remote these print statements later, they mess up the log 
-    print('Mutating gc...');
+    
 
+    #pull out info from sequences_i
+    seq=sequences_i[0]
+    var_rel_pos=int(sequences_i[-1][0])
+    variant_rel_end=var_rel_pos+float(SVLEN)    
+    
     if not (0 <= mut_percent <= 100):
         raise ValueError("Mutation percentage must be between 0 and 100")
         
-    if (variant_start-up_flank)<0 or (variant_end+down_flank)>len(seq):
+    if (var_rel_pos-up_flank)<0 or (variant_rel_end+down_flank)>len(seq):
         raise ValueError("Flanking indices exceed available sequence length")
+
+
     
     mutated_sequence = list(seq)
+    #print('mutated sequence pre', mutated_sequence[0:5])
     if up_flank>0:
-        mut_start=variant_start-up_flank
-        mut_end=variant_start
+        mut_start=var_rel_pos-up_flank
+        mut_end=var_rel_pos
     if down_flank>0:
-        mut_start=variant_end
-        mut_end=variant_end+down_flank
+        mut_start=variant_rel_end
+        mut_end=variant_rel_end+down_flank
         
     #right now, just assumes that revcomp does not deal with flanking sequences 
     #will need to fix it later
     if revcomp:
         #also make sure these are not one off 
-        mut_start=len(seq)-variant_end
-        mut_end=len(seq)-variant_start
+        mut_start=len(seq)-variant_rel_end
+        mut_end=len(seq)-var_rel_pos
         
     
     else:
-        mut_start=variant_start
-        mut_end=variant_end
+        mut_start=var_rel_pos
+        mut_end=variant_rel_end
+
+    mut_start=int(mut_start)
+    mut_end=int(mut_end)
+    print('mut start end', mut_start, mut_end)
+    print('old mut seq', mutated_sequence[mut_start:mut_end])
     
-    
+    print(f'Mutating gc at percentange {mut_percent}');
     for i in range(mut_start, mut_end + 1):
-        if random.randint(1, 100) <= mut_percent:
+        if random.randint(1, 100) <= int(mut_percent):
             current_nucleotide = mutated_sequence[i]
             if current_nucleotide in ['G', 'C']:
                 mutated_sequence[i] = random.choice(['A', 'T'])
+
+    print('new mut seq', mutated_sequence[mut_start:mut_end])
+
+    #join together new seq
+    new_seq=''.join(mutated_sequence)
+     
+    #for now, replace the alt seq with the gc mutated seq
+    sequences_i_list=list(sequences_i)
+    sequences_i_list[1]=new_seq
+    sequences_i_new=tuple(sequences_i_list)
+
                 
-    return ''.join(mutated_sequence)
+    return sequences_i_new
 
 
     
 
 
 
-def shuffle_nucs(seq, variant_start, variant_end, up_flank, down_flank, revcomp):
+def shuffle_nucs(sequences_i, up_flank, down_flank, revcomp, SVLEN):
     """
     This function shuffles the nucleotide order of a variant (and or the flanking regions up/downstream of the variant) 
     """
@@ -186,40 +198,58 @@ def shuffle_nucs(seq, variant_start, variant_end, up_flank, down_flank, revcomp)
     print('Shuffling nucleotides...');
 
 
+    #pull out info from sequences_i
+    seq=sequences_i[0]
+    var_rel_pos=sequences_i[-1][0]
+    variant_rel_end=var_rel_pos+SVLEN
+
+
     
-    if variant_start < 0 or variant_end >= len(seq) or variant_start > variant_end:
+    if var_rel_pos < 0 or variant_rel_end >= len(seq) or var_rel_pos > variant_rel_end:
         raise ValueError("Invalid range of indices")
         
            
-    if (variant_start-up_flank)<0 or (variant_end+down_flank)>len(seq):
+    if (var_rel_pos-up_flank)<0 or (variant_rel_end+down_flank)>len(seq):
         raise ValueError("Flanking indices exceed available sequence length")
     
     mutated_sequence = list(seq)
     if up_flank>0:
-        shuff_start=variant_start-up_flank
-        shuff_end=variant_start
+        shuff_start=var_rel_pos-up_flank
+        shuff_end=var_rel_pos
     if down_flank>0:
-        shuff_start=variant_end
-        shuff_end=variant_end+down_flank
+        shuff_start=variant_rel_end
+        shuff_end=variant_rel_end+down_flank
         
     #right now, just assumes that revcomp does not deal with flanking sequences 
     #will need to fix it later
     if revcomp:
         #also make sure these are not one off 
-        mut_start=len(seq)-variant_end
-        mut_end=len(seq)-variant_start
+        shuff_start=len(seq)-variant_rel_end
+        shuff_end=len(seq)-var_rel_pos
     
     else:
-        shuff_start=variant_start
-        shuff_end=variant_end
-          
+        shuff_start=var_rel_pos
+        shuff_end=variant_rel_end
+
+    shuff_start=int(shuff_start)
+    shuff_end=int(shuff_end)
         
     seq_list = list(seq)
     seq_to_shuffle = seq_list[shuff_start:shuff_end + 1]
     random.shuffle(seq_to_shuffle)
     seq_list[shuff_start:shuff_end + 1] = seq_to_shuffle
 
-    return ''.join(seq_list)
+    
+    #join together new seq
+    new_seq=''.join(seq_list)
+                            
+    #for now, replace the alt seq with the gc mutated seq
+    sequences_i_list=list(sequences_i)
+    sequences_i_list[1]=new_seq
+    sequences_i_new=tuple(sequences_i_list)
+
+                
+    return sequences_i_new
 
 
 ################ motif alterations 
@@ -263,7 +293,7 @@ def invert_motifs(sequence, substr_ranges):
 
 
 
-def mutate_TFs(CHR, POS, END, SVTYPE, SVLEN, sequences_i, tf_mutate_type, up_flank, down_flank, revcomp, alter_variant, track_path):
+def mutate_TFs(CHR, POS, END, SVTYPE, SVLEN, sequences_i, revcomp, tf_mutate_type, up_flank, down_flank, alter_variant, track_path):
 
     """
     This function mutates TFs within the variant and its flanking region
@@ -309,7 +339,7 @@ def mutate_TFs(CHR, POS, END, SVTYPE, SVLEN, sequences_i, tf_mutate_type, up_fla
     var_rel_end=var_rel_pos+SVLEN    #this one is based on the REF sesquence 
     sequence=sequences_i[0]
 
-    if (var_rel_pos - up_flank) < 0 or (var_rel_end + down_flank) > len(seq):
+    if (var_rel_pos - up_flank) < 0 or (var_rel_end + down_flank) > len(sequence):
         raise ValueError("Flanking indices exceed available sequence length")
 
    
@@ -318,14 +348,16 @@ def mutate_TFs(CHR, POS, END, SVTYPE, SVLEN, sequences_i, tf_mutate_type, up_fla
     track_df=pd.read_csv(track_path, sep='\t', header=None, skiprows=1, names=track_cols) 
     track_df['start']=track_df['start'].astype(int)
     track_df['end']=track_df['end'].astype(int)
-    track_df['span']=track_df['end']-ctcf_chr1['start']
+    track_df['span']=track_df['end']-track_df['start']
     #tf_name=track_df.iloc[1,3]
 
     #get track df surrounding the variant
-    track_df_variant=track_df[(track_df.chr==POS) & (track_df.start>(POS-flank_len)) & (track_df.end<(END+flank_len))]
+    print('track chr', track_df.chr[1])
+    print("CHR", CHR)
+    track_df_variant=track_df[(track_df.chr==CHR) & (track_df.start>(POS-up_flank)) & (track_df.end<(END+down_flank))]
 
     #later, may want to include option to only look at flanking regions and not include the variant itself 
-
+    print('len track_df_variant', len(track_df_variant))
    
     #get locations of each motif for within each sequence  
     track_df_variant['diff_from_POS']=track_df_variant['start'] - POS
@@ -341,11 +373,11 @@ def mutate_TFs(CHR, POS, END, SVTYPE, SVLEN, sequences_i, tf_mutate_type, up_fla
         track_df_variant['motif_end_idx_revcomp']=len(sequence)- track_df_variant['motif_start_idx']
         
         #turn this into the list of tuples 
-        tuple_coordinates = list(zip(ctcf_chr1['motif_start_idx_revcomp'], ctcf_chr1['motif_end_idx_revcomp']))
+        tuple_coordinates = list(zip(track_df_variant['motif_start_idx_revcomp'], track_df_variant['motif_end_idx_revcomp']))
 
     else:
         #turn this into the list of tuples 
-        tuple_coordinates = list(zip(ctcf_chr1['motif_start_idx'], ctcf_chr1['motif_end_idx']))
+        tuple_coordinates = list(zip(track_df_variant['motif_start_idx'], track_df_variant['motif_end_idx']))
 
 
 
@@ -354,7 +386,7 @@ def mutate_TFs(CHR, POS, END, SVTYPE, SVLEN, sequences_i, tf_mutate_type, up_fla
 
 
     if tf_mutate_type=='INV':
-        new_seq=invert_motifs(sequence, tuple_coordinates):
+        new_seq=invert_motifs(sequence, tuple_coordinates)
 
     elif tf_mutate_type=='shuffle':
         new_seq=shuffle_motifs(sequence, tuple_coordinates)
