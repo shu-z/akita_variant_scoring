@@ -162,4 +162,6 @@ test_data/custom_perturbations/output/CTCF_del_maps.npy
 test_data/custom_perturbations/output/CTCF_del_tracks.npy
 Akita_model/*
 score_var_output/
+data/
+
 >>>>>>> 82a7705dff92f1e47b6d19484bbaab1cce23f0ec
